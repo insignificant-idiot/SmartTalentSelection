@@ -25,11 +25,80 @@ def _call_local_llm(prompt: str, temperature: float = 0.0) -> str:
 
 def extract_profile(text: str) -> dict:
     prompt = f"""
-Analyze the following resume and extract the information into a JSON object.
+You are an expert resume parser and information extraction system.
 
-IMPORTANT: The 'name' field must contain the full name of the candidate. If you cannot find a name, use "Unknown".
+TASK:
+Analyze the resume below and extract structured information into a JSON object.
 
-Return ONLY valid JSON in exactly this format:
+CRITICAL REQUIREMENTS:
+1. Return ONLY valid JSON.
+2. Do NOT include markdown, explanations, comments, or code fences.
+3. Use the exact schema provided.
+4. If a field cannot be determined, use the specified fallback value.
+5. Extract information only from the resume content. Do not invent data.
+
+FIELD DEFINITIONS:
+
+"name":
+- Candidate's full name.
+- Prefer the most prominent name near the top of the resume.
+- Include first and last name when available.
+- Exclude job titles, email addresses, and company names.
+- If no clear name is found, use "Unknown".
+
+"skills":
+- List all technical, professional, and domain skills.
+- Include programming languages, frameworks, tools, platforms, databases, cloud technologies, methodologies, and relevant business skills.
+- Remove duplicates.
+- Return as an array of strings.
+
+"years_experience":
+- Estimate total professional experience in years.
+- Calculate from employment history when possible.
+- Use the difference between earliest relevant professional role and most recent role.
+- Round to the nearest whole number.
+- If experience cannot be determined, return 0.
+
+"experience":
+- Extract all professional work experiences.
+- Include employment, internships, consulting, freelance, and contract work when clearly identified.
+- Return as an array of objects.
+- For each experience include:
+  {{
+    "title": "",
+    "company": "",
+    "start_date": "",
+    "end_date": "",
+    "description": ""
+  }}
+- Preserve date formats as shown in the resume when possible.
+- Use "Present" if currently employed.
+- If a value is unavailable, use an empty string.
+
+"projects":
+- Extract notable personal, academic, freelance, open-source, or professional projects.
+- Return as an array of objects:
+  {{
+    "name": "",
+    "description": "",
+    "technologies": []
+  }}
+- Include technologies explicitly mentioned in the project.
+- If none exist, return [].
+
+"certifications":
+- Extract certifications, licenses, certificates, and professional credentials.
+- Return as an array of strings.
+- Include issuer name if clearly stated.
+
+NORMALIZATION RULES:
+- Remove duplicate entries.
+- Ignore contact information unless needed to identify the candidate name.
+- Ignore references and generic resume sections.
+- Preserve capitalization for names, companies, technologies, and certifications.
+- Do not infer certifications, projects, or skills that are not mentioned.
+
+OUTPUT SCHEMA:
 {{
     "name": "",
     "skills": [],
@@ -82,13 +151,34 @@ def _extract_name_from_text(text: str) -> str:
 
 def generate_justification(jd: str, profile: str) -> str:
     prompt = f"""
+You are an expert technical recruiter evaluating candidate-job fit.
+
+TASK:
+Given a job description and a candidate profile, explain why the candidate is a strong match.
+
+STRICT RULES:
+1. Use ONLY information present in the Job Description and Candidate Profile.
+2. Do NOT invent skills, experience, or achievements.
+3. Be precise, technical, and evidence-based.
+4. Keep the answer to exactly 2 sentences.
+5. Focus on direct skill/experience alignment with the job requirements.
+6. Prefer specific technologies, domains, and role overlap over generic praise.
+
+OUTPUT FORMAT:
+- Exactly 2 sentences
+- No bullet points
+- No headings
+- No extra commentary
+
+EVALUATION GUIDELINES:
+- Match must be based on: skills, tools, domain experience, years of experience, or relevant projects.
+- Mention the most important overlaps first.
+- If multiple strong matches exist, prioritize the most critical job requirements.
+
 Job Description:
 {jd}
 
 Candidate Profile:
 {profile}
-
-Explain in 2 short sentences why this candidate is a strong match.
-Be precise and technical.
 """
     return _call_local_llm(prompt, temperature=0.2)

@@ -12,3 +12,4 @@ wheels/
 chroma_db/
 *.db
 uploads/
+*.pdf
